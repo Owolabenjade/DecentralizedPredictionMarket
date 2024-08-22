@@ -177,13 +177,13 @@
             (var-set non-reentrant false)
             (ok (get outcome some-event))
           )
-          (begin
+          (let
             ;; Reset the non-reentrant flag
             (var-set non-reentrant false)
             (err u"Event is not closed or outcome not set")
           )
         )
-        (begin
+        (let
           ;; Reset the non-reentrant flag
           (var-set non-reentrant false)
           (err u"Event not found")
