@@ -122,66 +122,72 @@
     (var-set non-reentrant true)
 
     ;; Settle the bets and distribute payouts
-    (match (map-get? events { event-id: event-id })
-      some-event
-      (if (is-eq (get status some-event) closed-status)
-        (let
-          (
-            ;; Get the outcome of the event
-            (event-outcome (get outcome some-event))
-            ;; Calculate the total amount bet on the event
-            (total-bets (fold (lambda (bet accum)
-                                (+ accum (get amount (snd bet))))
-                              u0
-                              (map-filter (lambda (bet)
-                                            (is-eq (get event-id (fst bet)) event-id))
-                                          bets)))
-            ;; Calculate the total amount bet on the winning option
-            (winning-bets (fold (lambda (bet accum)
-                                  (if (is-eq (get option (snd bet)) event-outcome)
-                                      (+ accum (get amount (snd bet)))
-                                      accum))
+    (let
+      (
+        ;; Get the event data
+        (maybe-event (map-get? events { event-id: event-id }))
+      )
+      (match maybe-event
+        some-event
+        (if (is-eq (get status some-event) closed-status)
+          (let
+            (
+              ;; Get the outcome of the event
+              (event-outcome (get outcome some-event))
+              ;; Calculate the total amount bet on the event
+              (total-bets (fold (lambda (bet accum)
+                                  (+ accum (get amount (snd bet))))
                                 u0
                                 (map-filter (lambda (bet)
                                               (is-eq (get event-id (fst bet)) event-id))
                                             bets)))
-          )
+              ;; Calculate the total amount bet on the winning option
+              (winning-bets (fold (lambda (bet accum)
+                                    (if (is-eq (get option (snd bet)) event-outcome)
+                                        (+ accum (get amount (snd bet)))
+                                        accum))
+                                  u0
+                                  (map-filter (lambda (bet)
+                                                (is-eq (get event-id (fst bet)) event-id))
+                                              bets)))
+            )
 
-          ;; Distribute payouts to winners
-          (map-map (lambda (bet)
-                     (let
-                       (
-                         (bet-details (snd bet))
-                         (bet-user (get user (fst bet)))
-                       )
-                       (if (is-eq (get option bet-details) event-outcome)
-                           (let
-                             (
-                               ;; Calculate the payout
-                               (payout (* (get amount bet-details) (/ total-bets winning-bets)))
+            ;; Distribute payouts to winners
+            (map-map (lambda (bet)
+                       (let
+                         (
+                           (bet-details (snd bet))
+                           (bet-user (get user (fst bet)))
+                         )
+                         (if (is-eq (get option bet-details) event-outcome)
+                             (let
+                               (
+                                 ;; Calculate the payout
+                                 (payout (* (get amount bet-details) (/ total-bets winning-bets)))
+                               )
+                               ;; Transfer the payout to the user
+                               (as-contract (stx-transfer? payout tx-sender bet-user))
                              )
-                             ;; Transfer the payout to the user
-                             (as-contract (stx-transfer? payout tx-sender bet-user))
-                           )
-                           (ok u0)
-                       )
-                     ))
-                   bets)
+                             (ok u0)
+                         )
+                       ))
+                     bets)
 
-          ;; Reset the non-reentrant flag
-          (var-set non-reentrant false)
-          (ok (get outcome some-event))
+            ;; Reset the non-reentrant flag
+            (var-set non-reentrant false)
+            (ok (get outcome some-event))
+          )
+          (begin
+            ;; Reset the non-reentrant flag
+            (var-set non-reentrant false)
+            (err u"Event is not closed or outcome not set")
+          )
         )
         (begin
           ;; Reset the non-reentrant flag
           (var-set non-reentrant false)
-          (err u"Event is not closed or outcome not set")
+          (err u"Event not found")
         )
-      )
-      (begin
-        ;; Reset the non-reentrant flag
-        (var-set non-reentrant false)
-        (err u"Event not found")
       )
     )
   )
