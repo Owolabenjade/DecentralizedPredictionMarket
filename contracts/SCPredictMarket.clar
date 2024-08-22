@@ -1,6 +1,6 @@
 ;; Constants and Data Structures
 
-(define-constant owner "SP2C2YZW6J8CJJ0YCNMPFE5Q2J3MSP4B2JWX28ZYQ")
+(define-constant owner 'SP2C2YZW6J8CJJ0YCNMPFE5Q2J3MSP4B2JWX28ZYQ)
 (define-constant closed-status "closed")
 
 (define-map events
